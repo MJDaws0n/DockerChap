@@ -4,8 +4,15 @@
   "description": "DockerChap is a Node.js application that leverages Docker to securely run custom Docker images and builds on the host system, even if the images are insecure. It features a GUI web interface for ease of use.",
   "main": "app.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node app.js"
   },
   "author": "mjdawson",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "better-sqlite3": "^11.7.2",
+    "crypto": "^1.0.1",
+    "dotenv": "^16.4.7"
+  }
 }
