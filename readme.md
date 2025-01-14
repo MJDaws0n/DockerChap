@@ -18,10 +18,17 @@ DockerChap is a Node.js application that leverages Docker to securely run custom
     ```sh
     cd DockerChap
     ```
-3. Install the dependencies:
+3. Rename example.env
     ```sh
-    npm install
+    # Set settings such as port in here
+    mv example.env .env
     ```
+4. Copy default database (Development only):
+    ```sh
+    mv docker-chap-default.db docker-chap.db
+    ```
+    ## WARNING
+    Do **NOT** use the default database in a production environment as it has defeault users
 
 ## Usage
 

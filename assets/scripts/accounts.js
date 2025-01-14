@@ -1,8 +1,8 @@
 import Cookies from '/assets/cookies.js';
 
 export default class User {
-    async signup(username, password) {
-        const response = await this._fetch('/api/signup', { username, password });
+    async signup(username, password, lname, fname) {
+        const response = await this._fetch('/api/signup', { username, password, fname, lname });
         if (!response.error) {
             Cookies.set('session', response.sessionToken);
         }

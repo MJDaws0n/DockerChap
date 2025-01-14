@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "${PORT}:${PORT}" # Bind the port defined in the .env file
+    volumes:
+      - .:/usr/src/app # Mount current directory
+      - /usr/src/app/node_modules # Exclude node_modules
+    environment:
+      - PORT=${PORT} # Pass the PORT variable from .env
+    command: sh -c "npm install && npm start"

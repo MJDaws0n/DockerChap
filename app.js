@@ -6,6 +6,7 @@ const path = require('path');
 const bcrypt = require('bcrypt');
 const Database = require('better-sqlite3');
 const crypto = require('crypto');
+const { isStringObject } = require('util/types');
 
 const db = new Database('docker-chap.db');
 const PORT = process.env.PORT || 3000;
@@ -16,6 +17,8 @@ const PORT = process.env.PORT || 3000;
     db.prepare(`CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT NOT NULL UNIQUE,
+        fname TEXT NOT NULL,
+        lname TEXT NOT NULL,
         password TEXT NOT NULL,
         reset_token TEXT,
         session TEXT,
@@ -43,7 +46,7 @@ function serveHtml(filePath, res) {
     fs.readFile(filePath, 'utf8', (err, data) => {
         if (err) {
             res.writeHead(500, { 'Content-Type': 'text/plain' });
-            res.end('500 Internal Server Error 😢');
+            res.end('500 Internal Server Error');
         } else {
             res.writeHead(200, { 'Content-Type': 'text/html' });
             res.end(data);
@@ -60,9 +63,26 @@ function serveScript(filePath, res) {
     fs.readFile(filePath, 'utf8', (err, data) => {
         if (err) {
             res.writeHead(500, { 'Content-Type': 'text/plain' });
-            res.end('500 Internal Server Error 😢');
+            res.end('500 Internal Server Error');
         } else {
             res.writeHead(200, { 'Content-Type': 'application/javascript' });
+            res.end(data);
+        }
+    });
+}
+
+/**
+ * Serve an SVG file by path.
+ * @param {string} filePath - The path to the SVG file.
+ * @param {object} res - The HTTP response object.
+ */
+function serveSvg(filePath, res) {
+    fs.readFile(filePath, 'utf8', (err, data) => {
+        if (err) {
+            res.writeHead(500, { 'Content-Type': 'text/plain' });
+            res.end('500 Internal Server Error');
+        } else {
+            res.writeHead(200, { 'Content-Type': 'image/svg+xml' });
             res.end(data);
         }
     });
@@ -107,6 +127,11 @@ const server = http.createServer((req, res) => {
             serveHtml(filePath, res);
             break;
         }
+        case '/dashboard': {
+            const filePath = path.join(__dirname, '/routes/dashboard.html');
+            serveHtml(filePath, res);
+            break;
+        }
 
         case '/api/signup': {
             let body = '';
@@ -115,7 +140,22 @@ const server = http.createServer((req, res) => {
             });
 
             req.on('end', () => {
-                const { username, password } = JSON.parse(body);
+                let { username, password, fname, lname } = JSON.parse(body);
+
+                if (
+                    !username || !password || !fname || !lname ||
+                    typeof username !== 'string' || typeof password !== 'string' ||
+                    typeof fname !== 'string' || typeof lname !== 'string'
+                ) {
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: 'All fields (username, password, fname, lname) must be provided.' }));
+                    return;
+                }
+
+                username = username.toString().trim();
+                password = password.toString().trim();
+                fname = fname.toString().trim();
+                lname = lname.toString().trim();
 
                 // Check if the username already exists
                 const existingUser = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
@@ -140,8 +180,8 @@ const server = http.createServer((req, res) => {
                     const sessionToken = generateSecureToken();
 
                     // Insert the new user into the database
-                    const insert = db.prepare('INSERT INTO users (username, password, reset_token, session) VALUES (?, ?, ?, ?)');
-                    insert.run(username, hashedPassword, resetToken, sessionToken);
+                    const insert = db.prepare('INSERT INTO users (username, password, fname, lname, reset_token, session) VALUES (?, ?, ?, ?, ?, ?)');
+                    insert.run(username, hashedPassword, fname, lname, resetToken, sessionToken);
 
                     res.writeHead(200, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify({ message: 'User registered successfully', session: sessionToken, username: username }));
@@ -208,7 +248,7 @@ const server = http.createServer((req, res) => {
             }
 
             res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ message: 'User fetched successfully', username: user.username, sessionToken: user.session }));
+            res.end(JSON.stringify({ message: 'User fetched successfully', username: user.username, sessionToken: user.session, fname: user.fname, lname: user.lname  }));
             break;
         }
 
@@ -222,6 +262,17 @@ const server = http.createServer((req, res) => {
         case '/assets/cookies.js': {
             const filePath = path.join(__dirname, '/assets/scripts/cookies.js');
             serveScript(filePath, res);
+            break;
+        }
+
+        case '/assets/icons/toggle-left.svg': {
+            const filePath = path.join(__dirname, '/assets/icons/toggle-left.svg');
+            serveSvg(filePath, res);
+            break;
+        }
+        case '/assets/icons/toggle-right.svg': {
+            const filePath = path.join(__dirname, '/assets/icons/toggle-right.svg');
+            serveSvg(filePath, res);
             break;
         }
 
