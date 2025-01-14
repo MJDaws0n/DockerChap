@@ -2,7 +2,6 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login Page</title>
 </head>
@@ -16,26 +15,29 @@
         <button type="submit">Login</button>
     </form>
 
-    <script>
-        document.getElementById('loginForm').addEventListener('submit', function(event) {
+    <script type="module">
+        import User from '/assets/user.js';
+
+        const userManager = new User();
+        if(await userManager.isLoggedIn()) {
+            window.location.href = '/dashboard';
+        }
+
+        document.getElementById('loginForm').addEventListener('submit', async function(event) {
             event.preventDefault();
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
 
-            fetch('/api/login', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ username, password })
-            })
-            .then(response => response.json())
-            .then(data => {
-                console.log('Success:', data);
-            })
-            .catch((error) => {
-                console.error('Error:', error);
-            });
+            try {
+                const response = await userManager.login(username, password);
+                if (response.error) {
+                    alert(response.error);
+                } else {
+                    window.location.href = '/dashboard';
+                }
+            } catch (error) {
+                console.error('Error during login:', error);
+            }
         });
     </script>
 </body>

@@ -52,6 +52,23 @@ function serveHtml(filePath, res) {
 }
 
 /**
+ * Serve an JS file by path.
+ * @param {string} filePath - The path to the JS file.
+ * @param {object} res - The HTTP response object.
+ */
+function serveScript(filePath, res) {
+    fs.readFile(filePath, 'utf8', (err, data) => {
+        if (err) {
+            res.writeHead(500, { 'Content-Type': 'text/plain' });
+            res.end('500 Internal Server Error 😢');
+        } else {
+            res.writeHead(200, { 'Content-Type': 'application/javascript' });
+            res.end(data);
+        }
+    });
+}
+
+/**
  * Generate a secure token.
  * @returns {string} A secure token.
  */
@@ -85,6 +102,12 @@ const server = http.createServer((req, res) => {
             serveHtml(filePath, res);
             break;
         }
+        case '/logout': {
+            const filePath = path.join(__dirname, '/routes/logout.html');
+            serveHtml(filePath, res);
+            break;
+        }
+
         case '/api/signup': {
             let body = '';
             req.on('data', chunk => {
@@ -121,7 +144,7 @@ const server = http.createServer((req, res) => {
                     insert.run(username, hashedPassword, resetToken, sessionToken);
 
                     res.writeHead(200, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({ message: 'User registered successfully', sessionToken }));
+                    res.end(JSON.stringify({ message: 'User registered successfully', session: sessionToken, username: username }));
                 });
             });
             break;
@@ -151,17 +174,54 @@ const server = http.createServer((req, res) => {
                         return;
                     }
 
-                    // Generate a session token (simple example here, in a real app use a more robust method)
-                    const sessionToken = `${Date.now()}`;
-
-                    // Update session in the database
-                    const updateSession = db.prepare('UPDATE users SET session = ? WHERE id = ?');
-                    updateSession.run(sessionToken, user.id);
-
                     res.writeHead(200, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({ message: 'Login successful', sessionToken }));
+                    res.end(JSON.stringify({ message: 'Login successful', sessionToken: user.session, username: username }));
                 });
             });
+            break;
+        }
+        case '/api/user': {
+            // Parse cookies from the request
+            const cookies = {};
+            const cookieHeader = req.headers.cookie;
+            if (cookieHeader) {
+                cookieHeader.split(';').forEach(cookie => {
+                    const [name, value] = cookie.trim().split('=');
+                    cookies[name] = decodeURIComponent(value);
+                });
+            }
+
+            // Extract the session cookie
+            const session = cookies.session;
+            if (!session) {
+                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Not logged in' }));
+                return;
+            }
+            
+            // Fetch the user from the database
+            const user = db.prepare('SELECT * FROM users WHERE session = ?').get(session);
+            if (!user) {
+                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Not logged in' }));
+                return;
+            }
+
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ message: 'User fetched successfully', username: user.username, sessionToken: user.session }));
+            break;
+        }
+
+
+
+        case '/assets/user.js': {
+            const filePath = path.join(__dirname, '/assets/scripts/accounts.js');
+            serveScript(filePath, res);
+            break;
+        }
+        case '/assets/cookies.js': {
+            const filePath = path.join(__dirname, '/assets/scripts/cookies.js');
+            serveScript(filePath, res);
             break;
         }
 
