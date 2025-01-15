@@ -14,7 +14,7 @@
         }
 
         body.dark{
-            background-color: #333;
+            background-color: #4b4b4b;
         }
 
         header {
@@ -66,11 +66,14 @@
             background: #ddd;
         }
 
+        body.dark nav a:hover, body.dark nav a.active{
+            background-color: #464646;
+        }
+
         body.dark nav{
             background-color: #333;
         }
         body.dark nav a{
-            background-color: rgba(244, 244, 244, 0.165);
             color: white;;
         }
 
@@ -90,8 +93,13 @@
             flex: 1 1 calc(100% - 30px);
             background: #f9f9f9;
             padding: 15px;
-            border: 1px solid #ccc;
             border-radius: 5px;
+        }
+
+        body.dark .card div{
+            background-color: #333;
+            color: white;
+            border: none;
         }
 
         @media (min-width: 600px) {
@@ -108,15 +116,23 @@
         }
 
         .status.running {
-            background: green;
+            background: green !important;
+            width: calc(100% - 30px);
         }
 
         .status.stopped {
-            background: red;
+            background: red !important;
+            width: calc(100% - 30px);
         }
 
         .status.building {
-            background: orange;
+            background: orange !important;
+            width: calc(100% - 30px);
+        }
+        .status{
+            color: white;
+            line-height: 5px;
+            font-weight: bold;
         }
     </style>
 </head>
@@ -124,30 +140,39 @@
     <header>
         <h1>Docker Chap</h1>
         <div id="toggle-theme" data-active="false"><img src="/assets/icons/toggle-left.svg"></div>
-        <script>
+        <script type="module">
+            import Cookies from '/assets/cookies.js';
+
             document.querySelector('header #toggle-theme img').addEventListener('click', ()=>{
                 if(document.querySelector('header #toggle-theme').getAttribute('data-active') === 'false'){
                     document.querySelector('header #toggle-theme').setAttribute('data-active', true);
                     document.querySelector('header #toggle-theme img').src = '/assets/icons/toggle-right.svg';
                     document.querySelector('body').classList.add('dark');
                     document.querySelector('body').classList.remove('light');
+
+                    Cookies.set('theme', 'dark', 1000);
                 } else{
                     document.querySelector('header #toggle-theme').setAttribute('data-active', false);
                     document.querySelector('header #toggle-theme img').src = '/assets/icons/toggle-left.svg';
                     document.querySelector('body').classList.add('light');
                     document.querySelector('body').classList.remove('dark');
+
+                    Cookies.set('theme', 'light', 1000);
                 }
             });
+            if(Cookies.get('theme') === 'dark'){
+                document.querySelector('#toggle-theme img').click();
+            }
         </script>
     </header>
     <div class="container">
         <nav>
-            <a href="#" class="active" data-tab="images">Images</a>
-            <a href="#" data-tab="containers">Containers</a>
+            <a href="#" class="active" data-tab="containers">Containers</a>
+            <a href="#" data-tab="images">Images</a>
             <a href="#" data-tab="settings">Settings</a>
         </nav>
         <div class="content">
-            <div id="images" class="tab">
+            <div id="images" class="tab" style="display: none;">
                 <div class="card">
                     <div>
                         <h3>Docker Image 1</h3>
@@ -161,29 +186,29 @@
                     </div>
                 </div>
             </div>
-            <div id="containers" class="tab" style="display: none;">
+            <div id="containers" class="tab">
                 <div class="card">
                     <div>
                         <h3>Container 1</h3>
-                        <p>Status: Running</p>
-                        <div class="status running"></div>
+                        <p>Image: PHP</p>
+                        <div class="status running">Running</div>
                     </div>
                     <div>
                         <h3>Container 2</h3>
-                        <p>Status: Stopped</p>
-                        <div class="status stopped"></div>
+                        <p>Image: Custom Python</p>
+                        <div class="status stopped">Stopped</div>
                     </div>
                     <div>
                         <h3>Container 3</h3>
-                        <p>Status: Building</p>
-                        <div class="status building"></div>
+                        <p>Image: Ubuntu</p>
+                        <div class="status building">Building</div>
                     </div>
                 </div>
             </div>
             <div id="settings" class="tab" style="display: none;">
                 <form>
                     <label>First Name: <input type="text" id="edit-fname" value="Loading..." placeholder="Loading..."></label><br>
-                    <label>Last Name: <input type="text" id="edit-laname" value="Loading..." placeholder="Loading..."></label><br>
+                    <label>Last Name: <input type="text" id="edit-lname" value="Loading..." placeholder="Loading..."></label><br>
                     <button type="button">Save</button>
                     <button type="button">Reset Password</button>
                 </form>
@@ -211,8 +236,14 @@
             window.location.href = '/login';
         }
 
-        document.querySelector('edit-fname').textContent = user.fname;
-        document.querySelector('edit-lname').textContent = user.lname;
+        [ 
+            document.querySelector('#edit-fname').value,
+            document.querySelector('#edit-fname').placeholder 
+        ] = [user.fname, user.fname];
+        [ 
+            document.querySelector('#edit-lname').value,
+            document.querySelector('#edit-lname').placeholder 
+        ] = [user.lname , user.lname];
     </script>
 </body>
 </html>
