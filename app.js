@@ -31,7 +31,7 @@ const PORT = process.env.PORT || 3000;
         uuid TEXT NOT NULL,
         owner INTEGER NOT NULL,
         container TEXT NOT NULL,
-        image TEXT NOT NULL,
+        status INTEGER NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );`).run();
 }
@@ -221,27 +221,9 @@ const server = http.createServer((req, res) => {
             break;
         }
         case '/api/user': {
-            // Parse cookies from the request
-            const cookies = {};
-            const cookieHeader = req.headers.cookie;
-            if (cookieHeader) {
-                cookieHeader.split(';').forEach(cookie => {
-                    const [name, value] = cookie.trim().split('=');
-                    cookies[name] = decodeURIComponent(value);
-                });
-            }
+            const user = getUserFromHeader(req.headers.cookie);
 
-            // Extract the session cookie
-            const session = cookies.session;
-            if (!session) {
-                res.writeHead(400, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ error: 'Not logged in' }));
-                return;
-            }
-            
-            // Fetch the user from the database
-            const user = db.prepare('SELECT * FROM users WHERE session = ?').get(session);
-            if (!user) {
+            if (user === null) {
                 res.writeHead(400, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ error: 'Not logged in' }));
                 return;
@@ -249,6 +231,59 @@ const server = http.createServer((req, res) => {
 
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ message: 'User fetched successfully', username: user.username, sessionToken: user.session, fname: user.fname, lname: user.lname  }));
+            break;
+        }
+        case '/api/containers/create': {
+            let body = '';
+            req.on('data', chunk => {
+                body += chunk;
+            });
+
+            req.on('end', () => {
+                let { name } = JSON.parse(body);
+
+                if (
+                    !name ||
+                    typeof name !== 'string'
+                ) {
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: 'All fields (name) must be provided.' }));
+                    return;
+                }
+
+                name = name.toString().trim();
+
+                // Check for user being logged in
+                const user = getUserFromHeader(req.headers.cookie);
+
+                if (user === null) {
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: 'Not logged in' }));
+                    return;
+                }
+
+                // Check if name is already used
+                {
+                    const query = db.prepare('SELECT * FROM containers WHERE user = ? AND name = ?').get(user.id, name);
+                    if (query) {
+                        res.writeHead(400, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({ error: 'Container name "'+name+'" already in use.' }));
+                        return;
+                    }
+                }
+
+                // Create container
+                {
+                    const insert = db.prepare('INSERT INTO containers (user, name) VALUES (?, ?)').run(user.id, name);
+                    if (insert.changes === 1) {
+                        res.writeHead(201, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({ success: 'Container created successfully.' }));
+                    } else {
+                        res.writeHead(500, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({ error: 'Failed to create container.' }));
+                    }
+                }
+            });
             break;
         }
 
@@ -283,6 +318,33 @@ const server = http.createServer((req, res) => {
         }
     }
 });
+/**
+ * Gets user infomation based on cookie header
+ * @returns {array} A user array.
+ */
+function getUserFromHeader(cookieHeader){
+    // Parse cookies from the request
+    const cookies = {};
+    if (cookieHeader) {
+        cookieHeader.split(';').forEach(cookie => {
+            const [name, value] = cookie.trim().split('=');
+            cookies[name] = decodeURIComponent(value);
+        });
+    }
+
+    // Extract the session cookie
+    const session = cookies.session;
+    if (!session) {
+        return null;
+    }
+    
+    // Fetch the user from the database
+    const user = db.prepare('SELECT * FROM users WHERE session = ?').get(session);
+    if (!user) {
+        return null;
+    }
+    return { username: user.username, sessionToken: user.session, fname: user.fname, lname: user.lname };
+}
 
 server.listen(PORT, () => {
     console.log(`Server listening on port ${PORT}`);

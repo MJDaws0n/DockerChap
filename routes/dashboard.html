@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.15.10/dist/sweetalert2.all.min.js"></script><link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.15.10/dist/sweetalert2.min.css" rel="stylesheet">
     <title>Docker Chap - Dashboard</title>
     <style>
         body {
@@ -134,6 +135,16 @@
             line-height: 5px;
             font-weight: bold;
         }
+        #new-container{
+            background: #5e95cb;
+            color: white;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+            margin: 20px 0 20px 0;
+        }
     </style>
 </head>
 <body class="light">
@@ -168,7 +179,7 @@
     <div class="container">
         <nav>
             <a href="#" class="active" data-tab="containers">Containers</a>
-            <a href="#" data-tab="images">Images</a>
+            <!-- <a href="#" data-tab="images">Images</a> -->
             <a href="#" data-tab="settings">Settings</a>
         </nav>
         <div class="content">
@@ -187,20 +198,24 @@
                 </div>
             </div>
             <div id="containers" class="tab">
+                <button id="new-container">New + </button>
                 <div class="card">
                     <div>
                         <h3>Container 1</h3>
-                        <p>Image: PHP</p>
+                        <p>Disk: 68MB</p>
+                        <p>Ram: 16MB</p>
                         <div class="status running">Running</div>
                     </div>
                     <div>
                         <h3>Container 2</h3>
-                        <p>Image: Custom Python</p>
+                        <p>Disk: 192MB</p>
+                        <p>Ram: 0MB</p>
                         <div class="status stopped">Stopped</div>
                     </div>
                     <div>
                         <h3>Container 3</h3>
-                        <p>Image: Ubuntu</p>
+                        <p>Disk: 1.2GB</p>
+                        <p>Ram: 0MB</p>
                         <div class="status building">Building</div>
                     </div>
                 </div>
@@ -244,6 +259,71 @@
             document.querySelector('#edit-lname').value,
             document.querySelector('#edit-lname').placeholder 
         ] = [user.lname , user.lname];
+    </script>
+
+    <script>
+        document.querySelector('#new-container').addEventListener('click', ()=>{
+            Swal.fire({
+                title: 'New Container',
+                html: `
+                    <label>Container Name: <input type="text" id="container-name"></label><br>
+                    <label>Image: <select id="container-image"><option>PHP</option><option>Python</option></select></label>
+                `,
+                showCancelButton: true,
+                confirmButtonText: 'Create',
+                preConfirm: () => {
+                    return {
+                        name: document.querySelector('#container-name').value,
+                        image: document.querySelector('#container-image').value
+                    }
+                }
+            }).then(result => {
+                if(result.isConfirmed){
+                    if(!(result.value.name && result.value.image && result.value.name.trim() !== '' && result.value.image.trim() !== '')){
+                        // Re-open the modal
+                        alert('Please fill all fields');
+                        document.querySelector('#new-container').click();
+                        return;
+                    }
+                    Swal.fire({
+                        title: 'Creating Container',
+                        text: 'Please wait...',
+                        allowOutsideClick: false,
+                        allowEscapeKey: false,
+                        allowEnterKey: false,
+                        showConfirmButton: false,
+                        willOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
+
+                    // Send a request to /api/containers/create
+                    fetch('/api/containers/create', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(result.value)
+                    }).then(response => {
+                        if(response.ok){
+                            Swal.close();
+                            Swal.fire({
+                                title: 'Container Created',
+                                text: `Container ${result.value.name} created with image ${result.value.image}`,
+                                icon: 'success'
+                            });
+                        } else{
+                            Swal.close();
+                            Swal.fire({
+                                title: 'Error',
+                                text: 'An error occurred while creating the container',
+                                icon: 'error'
+                            });
+                        }
+                    });
+                }
+            });
+        });
     </script>
 </body>
 </html>
