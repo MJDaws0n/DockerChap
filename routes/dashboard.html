@@ -267,19 +267,17 @@
                 title: 'New Container',
                 html: `
                     <label>Container Name: <input type="text" id="container-name"></label><br>
-                    <label>Image: <select id="container-image"><option>PHP</option><option>Python</option></select></label>
                 `,
                 showCancelButton: true,
                 confirmButtonText: 'Create',
                 preConfirm: () => {
                     return {
-                        name: document.querySelector('#container-name').value,
-                        image: document.querySelector('#container-image').value
+                        name: document.querySelector('#container-name').value
                     }
                 }
             }).then(result => {
                 if(result.isConfirmed){
-                    if(!(result.value.name && result.value.image && result.value.name.trim() !== '' && result.value.image.trim() !== '')){
+                    if(!(result.value.name && result.value.name.trim() !== '')){
                         // Re-open the modal
                         alert('Please fill all fields');
                         document.querySelector('#new-container').click();
@@ -305,18 +303,20 @@
                         },
                         body: JSON.stringify(result.value)
                     }).then(response => {
-                        if(response.ok){
+                        return response.json();
+                    }).then(data => {
+                        if(data.message === 'Container created successfully.' || !data.error){
                             Swal.close();
                             Swal.fire({
                                 title: 'Container Created',
-                                text: `Container ${result.value.name} created with image ${result.value.image}`,
+                                text: `Container ${result.value.name} created!`,
                                 icon: 'success'
                             });
                         } else{
                             Swal.close();
                             Swal.fire({
                                 title: 'Error',
-                                text: 'An error occurred while creating the container',
+                                text: 'An error occurred while creating the container. '+data.error,
                                 icon: 'error'
                             });
                         }

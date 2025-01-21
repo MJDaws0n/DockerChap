@@ -30,8 +30,8 @@ const PORT = process.env.PORT || 3000;
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         uuid TEXT NOT NULL,
         owner INTEGER NOT NULL,
-        container TEXT NOT NULL,
-        status INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        status INTEGER DEFAULT '0' NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );`).run();
 }
@@ -68,6 +68,18 @@ function serveScript(filePath, res) {
             res.writeHead(200, { 'Content-Type': 'application/javascript' });
             res.end(data);
         }
+    });
+}
+
+/**
+ * Generate a UUID.
+ * @returns {string} A randomly generated UUID.
+ */
+function generateUUID() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
     });
 }
 
@@ -264,7 +276,7 @@ const server = http.createServer((req, res) => {
 
                 // Check if name is already used
                 {
-                    const query = db.prepare('SELECT * FROM containers WHERE user = ? AND name = ?').get(user.id, name);
+                    const query = db.prepare('SELECT * FROM containers WHERE owner = ? AND name = ?').get(user.id, name);
                     if (query) {
                         res.writeHead(400, { 'Content-Type': 'application/json' });
                         res.end(JSON.stringify({ error: 'Container name "'+name+'" already in use.' }));
@@ -274,10 +286,12 @@ const server = http.createServer((req, res) => {
 
                 // Create container
                 {
-                    const insert = db.prepare('INSERT INTO containers (user, name) VALUES (?, ?)').run(user.id, name);
+                    const UUID = generateUUID();
+
+                    const insert = db.prepare('INSERT INTO containers (owner, name, uuid) VALUES (?, ?, ?)').run(user.id, name, UUID);
                     if (insert.changes === 1) {
                         res.writeHead(201, { 'Content-Type': 'application/json' });
-                        res.end(JSON.stringify({ success: 'Container created successfully.' }));
+                        res.end(JSON.stringify({ message: 'Container created successfully.' }));
                     } else {
                         res.writeHead(500, { 'Content-Type': 'application/json' });
                         res.end(JSON.stringify({ error: 'Failed to create container.' }));
@@ -343,7 +357,7 @@ function getUserFromHeader(cookieHeader){
     if (!user) {
         return null;
     }
-    return { username: user.username, sessionToken: user.session, fname: user.fname, lname: user.lname };
+    return user;
 }
 
 server.listen(PORT, () => {
